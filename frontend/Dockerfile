@@ -26,7 +26,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Copy ONLY the necessary standalone files from the builder stage
-COPY --from=builder /app/public ./public
+#COPY --from=builder /app/public ./public UnCommented, since we don't have a public folder.....
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
