@@ -1,0 +1,63 @@
+name: Build and Push Production Images
+
+# Trigger this workflow whenever code is pushed to the main branch
+on:
+  push:
+    branches: ['main']
+
+# Define environment variables to keep the code clean
+env:
+  REGISTRY: ghcr.io
+  REPO_OWNER: drewbobsen
+
+jobs:
+  # --- JOB 1: BUILD THE NEXT.JS FRONTEND ---
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/compare-the-word-frontend:latest
+
+
+  # --- JOB 2: BUILD THE RUST API ---
+  build-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/compare-the-word-api:latest
