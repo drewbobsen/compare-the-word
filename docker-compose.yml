@@ -1,0 +1,48 @@
+# docker-compose.yml
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bible_db
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bible_api -d bible"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+    - ./data/pgdata:/var/lib/postgresql/data
+    - ./data/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+
+  api:
+    build:
+      context: ./api
+    container_name: bible_api
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: bible_frontend
+    env_file:
+      - .env
+    depends_on:
+      api:
+        condition: service_started
+
+  proxy:
+    image: nginx:alpine
+    container_name: bible_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - api
+
+volumes:
+  pgdata:

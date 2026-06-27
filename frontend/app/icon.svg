@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="48" y="25" width="4" height="50" fill="#52525B" rx="2" />
+  
+  <text x="40" y="70" font-family="ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="52" fill="#E4E4E7" text-anchor="end">C</text>
+  
+  <text x="60" y="70" font-family="ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="52" fill="#E4E4E7" text-anchor="start">W</text>
+</svg>

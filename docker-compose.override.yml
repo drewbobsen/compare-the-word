@@ -1,0 +1,29 @@
+# docker-compose.override.yml
+services:
+  api:
+    build:
+      context: ./api
+      target: builder
+    volumes:
+      - ./api:/app
+    command: cargo watch -x run # (Assuming you use cargo-watch for hot reloading)
+
+  frontend:
+    build:
+      context: ./frontend
+      target: base
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    command: npm run dev
+
+  proxy:
+    volumes:
+      - ./proxy/nginx.local.conf:/etc/nginx/nginx.conf:ro
+      - ./proxy/dev-certs:/etc/nginx/certs:ro # Your mkcert files
+  
