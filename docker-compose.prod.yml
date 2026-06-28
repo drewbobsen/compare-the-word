@@ -2,7 +2,7 @@ services:
   db:
     restart: always
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data 
+      - ./data/pgdata:/var/lib/postgresql/data 
   frontend:
     image: ghcr.io/drewbobsen/compare-the-word-frontend:latest
     restart: always
@@ -30,9 +30,9 @@ services:
     image: nginxproxy/nginx-proxy:latest
     restart: always
     volumes:
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
+      - ./certs:/etc/nginx/certs
+      - ./vhost:/etc/nginx/vhost.d
+      - ./html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
   acme-companion:
     image: nginxproxy/acme-companion:latest
@@ -41,9 +41,9 @@ services:
       - DEFAULT_EMAIL=andrew@erhardt.cloud
       - NGINX_PROXY_CONTAINER=bible_nginx
     volumes:
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
+      - ./certs:/etc/nginx/certs
+      - ./vhost:/etc/nginx/vhost.d
+      - ./html:/usr/share/nginx/html
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - proxy
