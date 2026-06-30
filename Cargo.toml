@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "api"
-, "data"]
+]
 resolver = "3"

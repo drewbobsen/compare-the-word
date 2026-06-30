@@ -1,17 +1,28 @@
 use axum::{
     extract::{Query, State},
     routing::get,
+    http::header,
+    response::IntoResponse,
     http::StatusCode,
     Router,
-    Json
+    Json,
 };
+use moka::future::Cache;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use sqlx::FromRow;
 use dotenvy::dotenv;
 use std::env;
+use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
+
+// 1. Define the shared Application State
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+    cache: Cache<String, String>,
+}
 
 #[derive(Deserialize)]
 struct CompareQuery {
@@ -19,7 +30,6 @@ struct CompareQuery {
     chapter: i32,
     pub t1: String,
     pub t2: String,
-
 }
 
 #[derive(Serialize, FromRow)]
@@ -48,11 +58,11 @@ async fn main() {
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
+        
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set in the .envfile");
 
-    let port = env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let addr = format!("0.0.0.0:{}", port);
     println!("Connecting to the database...");
 
@@ -62,23 +72,55 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-        let app = Router::new()
-            .route("/api/compare", get(compare_verses))
-            .route("/api/translations", get(get_translations))
-            .route("/api/books", get(get_books))
-            .with_state(pool)
-            .layer(cors);
+    // 2. Initialize the Moka Cache
+    let query_cache = Cache::builder()
+        .max_capacity(1_000) // Caps at 1,000 queries to protect RAM
+        .time_to_idle(Duration::from_secs(86_400)) // 24-hour idle expiration
+        .build();
 
-        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-        println!("Server running! Try fetching: {addr}/api/compare?book=Genesis&chapter=1&verse=1");
-        axum::serve(listener, app).await.unwrap();
+    // 3. Bundle the pool and cache into our AppState
+    let state = AppState {
+        db: pool,
+        cache: query_cache,
+    };
+
+    let app = Router::new()
+        .route("/api/compare", get(compare_verses))
+        .route("/api/translations", get(get_translations))
+        .route("/api/books", get(get_books))
+        .with_state(state) // Pass the combined state here
+        .layer(cors);
+
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    println!("Server running! Try fetching: {addr}/api/compare?book=Genesis&chapter=1&t1=eng-kjv&t2=eng-web");
+    axum::serve(listener, app).await.unwrap();
 }
 
+// 4. The highly optimized cache handler
 pub async fn compare_verses(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Query(query_params): Query<CompareQuery>,
-) -> Result<Json<Vec<VerseResponse>>, (StatusCode, String)> {
-    let verses = sqlx::query_as::<_, VerseResponse>(
+) -> impl IntoResponse {
+    // Generate a unique key based on the query parameters
+    let cache_key = format!(
+        "{}:{}:{}:{}", 
+        query_params.book, query_params.chapter, query_params.t1, query_params.t2
+    );
+
+    // CHECK CACHE: If the JSON string exists, serve it immediately
+    if let Some(cached_json) = state.cache.get(&cache_key).await {
+        println!("Cache HIT: {}", cache_key);
+        return (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/json")],
+            cached_json,
+        ).into_response();
+    }
+
+    println!("Cache MISS: {} - Querying Database...", cache_key);
+
+    // DATABASE QUERY
+    let query_result = sqlx::query_as::<_, VerseResponse>(
         r#"
         SELECT 
             verse,
@@ -94,20 +136,48 @@ pub async fn compare_verses(
     .bind(query_params.chapter)
     .bind(&query_params.t1)
     .bind(&query_params.t2)
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    .fetch_all(&state.db) // Note: using state.db now
+    .await;
 
-    Ok(Json(verses))
+    // Handle potential database errors gracefully
+    let verses = match query_result {
+        Ok(v) => v,
+        Err(e) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [(header::CONTENT_TYPE, "text/plain")],
+            format!("Database error: {}", e),
+        ).into_response(),
+    };
+
+    // SERIALIZE EXACTLY ONCE
+    let json_string = match serde_json::to_string(&verses) {
+        Ok(s) => s,
+        Err(e) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [(header::CONTENT_TYPE, "text/plain")],
+            format!("Serialization error: {}", e),
+        ).into_response(),
+    };
+
+    // STORE IN CACHE
+    state.cache.insert(cache_key, json_string.clone()).await;
+
+    // RETURN TO CLIENT
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/json")],
+        json_string,
+    ).into_response()
 }
 
+// 5. Update the state extractors for the remaining routes
 pub async fn get_translations(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<TranslationResponse>>, (StatusCode, String)> {
     let translations = sqlx::query_as::<_, TranslationResponse>(
         "SELECT code, name FROM translations ORDER BY name ASC"
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.db)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
@@ -115,12 +185,12 @@ pub async fn get_translations(
 }
 
 pub async fn get_books(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<BookInfo>>, (StatusCode, String)> {
     let books = sqlx::query_as::<_, BookInfo>(
         "SELECT book, COALESCE(MAX(chapter), 1)::INT AS chapter_count FROM verses GROUP BY book"
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.db)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
