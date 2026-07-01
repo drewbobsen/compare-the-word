@@ -1,10 +1,15 @@
 import ControlBar from './ControlBar';
 
-// 1. Interfaces
-interface VerseResponse {
+// 1. UPDATED Interfaces for the Diff Engine
+export interface DiffToken {
+  text: string;
+  has_diff: boolean;
+}
+
+export interface VerseDiffResponse {
   verse: number;
-  text_1: string | null;
-  text_2: string | null;
+  text_1: DiffToken[];
+  text_2: DiffToken[];
 }
 
 interface BookInfo {
@@ -17,7 +22,7 @@ interface TranslationInfo {
   name: string;
 }
 
-// 2. The OSIS Translation Map (Add the rest of the books as needed)
+// 2. The OSIS Translation Map 
 const BOOK_MAP: Record<string, string> = {
   // Old Testament
   "Gen": "Genesis",
@@ -89,7 +94,7 @@ const BOOK_MAP: Record<string, string> = {
   "Jude": "Jude",
   "Rev": "Revelation",
 
-  //Darn Catholics! JK, Love you guys!
+  // Deuterocanonical
   "Tob": "Tobit",
   "Jdt": "Judith",
   "Wis": "Wisdom of Solomon",
@@ -106,25 +111,41 @@ const BOOK_MAP: Record<string, string> = {
 
 const CANONICAL_ORDER = Object.keys(BOOK_MAP);
 
+// NEW: Helper function to render the diff tokens
+const renderTokens = (tokens: DiffToken[]) => {
+  // Fallback if a verse is entirely missing from a translation
+  if (!tokens || tokens.length === 0) {
+    return <span className="italic text-zinc-600">Omitted</span>;
+  }
+
+  return tokens.map((token, index) => (
+    <span
+      key={index}
+      className={
+        token.has_diff
+          ? "diff-token text-zinc-200 font-medium decoration-zinc-600 underline underline-offset-4 cursor-default rounded px-0.5 transition-all duration-200 group-has-[.diff-token:hover]:text-white group-has-[.diff-token:hover]:bg-zinc-700 group-has-[.diff-token:hover]:decoration-zinc-300"
+          : "text-zinc-500 transition-colors hover:text-zinc-400"
+      }
+    >
+      {token.text}
+    </span>
+  ));
+};
+
 export default async function ComparePage({
   searchParams,
 }: {
-  // Update the type definition to explicitly wrap it in a Promise
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>; 
 }) {
-  // 1. AWAIT the searchParams Promise before doing anything else!
   const params = await searchParams;
 
-  // 2. Read the URL parameters from the resolved object
   const book = (params.book as string) || "Gen";
   const chapter = Number(params.chapter) || 1;
   const t1 = (params.t1 as string) || "";
   const t2 = (params.t2 as string) || "";
 
-  // 3. Fetch directly across the Docker Network!
   const API_URL = process.env.INTERNAL_API_URL || "http://api:8080";
 
-  // Fetch Metadata (Aggressively cached because books/translations never change)
   const [booksRes, transRes] = await Promise.all([
     fetch(`${API_URL}/api/books`, { cache: 'force-cache' }),
     fetch(`${API_URL}/api/translations`, { cache: 'force-cache' })
@@ -140,11 +161,11 @@ export default async function ComparePage({
   const currentT1 = t1 || (translations.length >= 2 ? translations[0].code : "");
   const currentT2 = t2 || (translations.length >= 2 ? translations[1].code : "");
 
-  // 3. Fetch Verses
-  let verses = [];
+  // Update verse array to expect the new Diff objects
+  let verses: VerseDiffResponse[] = [];
   if (currentT1 && currentT2) {
     const url = `${API_URL}/api/compare?book=${encodeURIComponent(book)}&chapter=${chapter}&t1=${currentT1}&t2=${currentT2}`;
-    const versesRes = await fetch(url, { cache: 'no-store' }); // Don't cache dynamic searches
+    const versesRes = await fetch(url, { cache: 'no-store' }); 
     if (versesRes.ok) {
       verses = await versesRes.json();
     }
@@ -153,11 +174,10 @@ export default async function ComparePage({
   const currentBookData = sortedBooks.find((b: any) => b.book === book);
   const chapterCount = currentBookData ? currentBookData.chapter_count : 1;
 
-  // 4. Render the UI
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-zinc-950 text-zinc-300 font-sans selection:bg-zinc-700">
       
-      {/* The Interactive Client Component */}
+      {/* The ControlBar naturally keeps the Book/Chapter selectors grouped as configured */}
       <ControlBar 
         books={sortedBooks}
         translations={translations}
@@ -169,32 +189,33 @@ export default async function ComparePage({
         bookMap={BOOK_MAP}
       />
 
-      {/* THE READING PANE (Rendered instantly on the Server) */}
-      {/* THE READING PANE */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
-        {/* 1. Add overflow-x-auto to create the horizontal swipe zone on mobile */}
         <div className="max-w-6xl mx-auto overflow-x-auto pb-4">
           {verses.length === 0 ? (
             <div className="text-zinc-500 mt-8">No verses found.</div>
           ) : (
             <div className="min-w-[600px] lg:min-w-0 grid grid-cols-2 gap-x-8 lg:gap-x-12 gap-y-4">
-              {verses.map((verseData: any) => (
+              {verses.map((verseData) => (
                 <div key={verseData.verse} className="contents group">
                   
-                  {/* Left Column */}
+                  {/* Left Column - Updated to use renderTokens */}
                   <div className="flex gap-4 p-3 rounded-lg transition-colors group-hover:bg-zinc-900/80">
                     <span className="text-xs font-mono text-zinc-600 mt-1.5 shrink-0 select-none group-hover:text-zinc-400">
                       {verseData.verse}
                     </span>
-                    <p className="text-lg leading-relaxed">{verseData.text_1 || <span className="italic text-zinc-600">Omitted</span>}</p>
+                    <p className="text-lg leading-relaxed">
+                      {renderTokens(verseData.text_1)}
+                    </p>
                   </div>
 
-                  {/* Right Column */}
+                  {/* Right Column - Updated to use renderTokens */}
                   <div className="flex gap-4 p-3 rounded-lg transition-colors group-hover:bg-zinc-900/80">
                     <span className="text-xs font-mono text-zinc-600 mt-1.5 shrink-0 select-none group-hover:text-zinc-400">
                       {verseData.verse}
                     </span>
-                    <p className="text-lg leading-relaxed">{verseData.text_2 || <span className="italic text-zinc-600">Omitted</span>}</p>
+                    <p className="text-lg leading-relaxed">
+                      {renderTokens(verseData.text_2)}
+                    </p>
                   </div>
 
                 </div>
@@ -203,7 +224,6 @@ export default async function ComparePage({
           )}
         </div>
       </main>
-
     </div>
   );
 }

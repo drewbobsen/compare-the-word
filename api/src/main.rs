@@ -16,8 +16,21 @@ use dotenvy::dotenv;
 use std::env;
 use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
-
+use similar::{ChangeTag, TextDiff};
 // 1. Define the shared Application State
+#[derive(Serialize, Clone)]
+pub struct DiffToken {
+    pub text: String,
+    pub has_diff: bool,
+}
+
+#[derive(Serialize)]
+pub struct VerseDiffResponse {
+    pub verse: i32,
+    pub text_1: Vec<DiffToken>,
+    pub text_2: Vec<DiffToken>,
+}
+
 #[derive(Clone)]
 struct AppState {
     db: PgPool,
@@ -149,8 +162,45 @@ pub async fn compare_verses(
         ).into_response(),
     };
 
-    // SERIALIZE EXACTLY ONCE
-    let json_string = match serde_json::to_string(&verses) {
+    let mut diffed_verses = Vec::new();
+
+    for v in verses{
+        let t1_raw = v.text_1.as_deref().unwrap_or("");
+        let t2_raw = v.text_2.as_deref().unwrap_or("");
+
+        let diff = TextDiff::from_words(t1_raw, t2_raw);
+
+        let mut text_1_tokens = Vec::new();
+        let mut text_2_tokens = Vec::new();
+
+        for change in diff.iter_all_changes(){
+            let token = DiffToken{
+                text: change.value().to_string(),
+                has_diff: change.tag() != ChangeTag::Equal,
+            };
+
+            match change.tag() {
+                ChangeTag::Equal => {
+                    text_1_tokens.push(token.clone());
+                    text_2_tokens.push(token);
+                }
+                ChangeTag::Delete => {
+                    text_1_tokens.push(token);
+                }
+                ChangeTag::Insert => {
+                    text_2_tokens.push(token);
+                }
+            }
+        }
+
+        diffed_verses.push(VerseDiffResponse {
+            verse: v.verse,
+            text_1: text_1_tokens,
+            text_2: text_2_tokens,
+        });
+    }
+
+    let json_string = match serde_json::to_string(&diffed_verses) {
         Ok(s) => s,
         Err(e) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
