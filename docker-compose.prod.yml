@@ -34,6 +34,7 @@ services:
       - ./vhost:/etc/nginx/vhost.d
       - ./html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./conf/rate_limit.conf:/etc/nginx/conf.d/rate_lmit.conf:ro
   acme-companion:
     image: nginxproxy/acme-companion:latest
     container_name: acme-companion
