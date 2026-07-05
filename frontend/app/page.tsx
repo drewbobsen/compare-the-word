@@ -223,6 +223,31 @@ export default async function ComparePage({
             </div>
           )}
         </div>
+        {/* NON-OBSTRUCTIVE FOOTER */}
+        <footer className="mt-16 mb-4 text-center">
+          <p className="text-sm text-zinc-600">
+            CompareTheWord is ad-free and open-source.
+          </p>
+          <div className="mt-2 flex items-center justify-center space-x-3 text-sm text-zinc-500">
+            <a 
+              href="https://ko-fi.com/drewbobsen" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 decoration-zinc-700 underline underline-offset-4 transition-colors duration-200"
+            >
+              Support the Server
+            </a>
+            <span className="text-zinc-700">&bull;</span>
+            <a 
+              href="https://github.com/drewbobsen/compare-the-word" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 decoration-zinc-700 underline underline-offset-4 transition-colors duration-200"
+            >
+              Contribute on GitHub
+            </a>
+          </div>
+        </footer>
       </main>
     </div>
   );
