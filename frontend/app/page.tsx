@@ -1,5 +1,5 @@
 import ControlBar from './ControlBar';
-
+import { Metadata } from 'next';
 // 1. UPDATED Interfaces for the Diff Engine
 export interface DiffToken {
   text: string;
@@ -131,6 +131,38 @@ const renderTokens = (tokens: DiffToken[]) => {
     </span>
   ));
 };
+
+export async function generateMetadata({
+  searchParams,
+}:{
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+
+  const bookCode = (params.book as string) || "Gen";
+  const chapter = Number(params.chapter) || 1;
+  const t1 = ((params.t1 as string) || "kjv").toUpperCase();
+  const t2 = ((params.t2 as string) || "web").toUpperCase();
+
+  const bookName = BOOK_MAP[bookCode] || "Genesis";
+  const canonicalUrl = `https://comparetheword.app/?book=${bookCode}&chapter=${chapter}&t1=${t1.toLowerCase()}&t2=${t2.toLowerCase()}`;
+
+  return {
+    title: `${bookName} ${chapter}: ${t1} vs ${t2} | CompareTheWord`,
+    description: `Read and Compare ${bookName} chapter ${chapter} side-by-side in the ${t1} and ${t2} translations. Spot the Differences Instantly!`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `${bookName} ${chapter} Comparison`,
+      description: `Side-by-side comparison of ${t1} and ${t2}.`,
+      url: canonicalUrl,
+      siteName: 'CompareTheWord',
+      locale: 'en_US',
+      type: 'website',
+    }
+  }
+}
 
 export default async function ComparePage({
   searchParams,
