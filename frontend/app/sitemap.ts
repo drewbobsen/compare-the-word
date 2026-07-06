@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const API_URL = process.env.INTERNAL_API_URL || "http://api:8080";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://api:8080";
 
     const res  = await fetch(`${API_URL}/api/books`, { cache: 'force-cache'});
     const books = await res.json();
