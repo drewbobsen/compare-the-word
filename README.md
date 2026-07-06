@@ -1,3 +1,5 @@
+[CompareTheWord](https://comparetheword.app)
+
 # CompareTheWord
 
 A modern, minimalist web application for side-by-side Bible translation comparison. 
