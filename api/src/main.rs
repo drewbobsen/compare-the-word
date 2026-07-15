@@ -64,6 +64,23 @@ pub struct BookInfo {
     pub chapter_count: i32,
 }
 
+#[derive(Deserialize)]
+pub struct SearchQuery {
+    pub q: String,
+    pub t: Option<String>, // Optional translation filter
+}
+
+#[derive(Serialize, FromRow)]
+pub struct SearchResult {
+    pub book: String,
+    pub chapter: i32,
+    pub verse: i32,
+    pub text: String,
+    pub highlight: Option<String>, 
+}
+
+use std::sync::Arc;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -101,6 +118,7 @@ async fn main() {
         .route("/api/compare", get(compare_verses))
         .route("/api/translations", get(get_translations))
         .route("/api/books", get(get_books))
+        .route("/api/search", get(search_verses))
         .with_state(state) // Pass the combined state here
         .layer(cors);
 
@@ -245,4 +263,48 @@ pub async fn get_books(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
     Ok(Json(books))
+}
+
+pub async fn search_verses(
+    State(state): State<AppState>, // Your Axum state containing the SQLx PgPool
+    Query(params): Query<SearchQuery>,
+) -> impl IntoResponse {
+    // 1. Sanitize input
+    let search_term = params.q.trim();
+    if search_term.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Search query cannot be empty").into_response();
+    }
+
+    let translation = params.t.unwrap_or_else(|| "kjv".to_string()).to_lowercase();
+
+    // 2. Execute the Full-Text Search
+    // plainto_tsquery ensures things like "the light" don't break the SQL syntax
+    let query_result = sqlx::query_as::<_, SearchResult>(
+        r#"
+        SELECT 
+            book, 
+            chapter, 
+            verse, 
+            text,
+            ts_headline('english', text, plainto_tsquery('english', $2), 'StartSel=<b>, StopSel=</b>, MaxWords=35, MinWords=15') as highlight
+        FROM verses
+        WHERE translation_code = $1 
+          AND search_vector @@ plainto_tsquery('english', $2)
+        ORDER BY book ASC, chapter ASC, verse ASC
+        LIMIT 50
+        "#
+    )
+    .bind(&translation)
+    .bind(search_term)
+    .fetch_all(&state.db)
+    .await;
+
+    // 3. Return the JSON payload
+    match query_result {
+        Ok(results) => (StatusCode::OK, Json(results)).into_response(),
+        Err(e) => {
+            eprintln!("Database search error: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to execute search").into_response()
+        }
+    }
 }

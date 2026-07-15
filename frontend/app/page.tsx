@@ -1,5 +1,6 @@
 import ControlBar from './ControlBar';
 import { Metadata } from 'next';
+import SearchOverlay from './SearchOverlay';
 // 1. UPDATED Interfaces for the Diff Engine
 export interface DiffToken {
   text: string;
@@ -20,6 +21,14 @@ interface BookInfo {
 interface TranslationInfo {
   code: string;
   name: string;
+}
+
+export interface SearchResult {
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+  highlight: string | null;
 }
 
 // 2. The OSIS Translation Map 
@@ -222,6 +231,7 @@ export default async function ComparePage({
       />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
+        <SearchOverlay />
         <div className="max-w-6xl mx-auto overflow-x-auto pb-4">
           {verses.length === 0 ? (
             <div className="text-zinc-500 mt-8">No verses found.</div>
