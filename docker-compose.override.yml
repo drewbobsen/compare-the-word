@@ -1,29 +1,27 @@
 # docker-compose.override.yml
+# Auto-merged by `docker compose up` — local dev only, direct ports, hot reload.
 services:
+  db:
+    ports:
+      - "5432:5432"
+
   api:
     build:
-      context: ./api
       target: builder
+    ports:
+      - "8080:8080"
     volumes:
       - ./api:/app
-    command: cargo watch -x run # (Assuming you use cargo-watch for hot reloading)
+    command: cargo watch -x run
 
   frontend:
     build:
-      context: ./frontend
       target: base
-      args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
+    environment:
+      - INTERNAL_API_URL=http://api:8080
+    ports:
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    env_file:
-      - .env
     command: npm run dev
-
-  proxy:
-    volumes:
-      - ./proxy/nginx.local.conf:/etc/nginx/nginx.conf:ro
-      - ./proxy/dev-certs:/etc/nginx/certs:ro # Your mkcert files
-  
