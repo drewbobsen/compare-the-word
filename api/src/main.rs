@@ -15,7 +15,6 @@ use sqlx::FromRow;
 use dotenvy::dotenv;
 use std::env;
 use std::time::Duration;
-use tower_http::cors::{Any, CorsLayer};
 use similar::{ChangeTag, TextDiff};
 // 1. Define the shared Application State
 #[derive(Serialize, Clone)]
@@ -84,11 +83,7 @@ use std::sync::Arc;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
-        
+
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set in the .envfile");
 
@@ -119,8 +114,7 @@ async fn main() {
         .route("/api/translations", get(get_translations))
         .route("/api/books", get(get_books))
         .route("/api/search", get(search_verses))
-        .with_state(state) // Pass the combined state here
-        .layer(cors);
+        .with_state(state); // Pass the combined state here
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("Server running! Try fetching: {addr}/api/compare?book=Genesis&chapter=1&t1=eng-kjv&t2=eng-web");
