@@ -10,7 +10,7 @@ export interface SearchResult {
   highlight: string | null;
 }
 
-export default function SearchOverlay() {
+export default function SearchOverlay({ translation }: { translation: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -25,8 +25,7 @@ export default function SearchOverlay() {
     setError('');
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const res = await fetch(`${apiUrl}/api/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&t=${encodeURIComponent(translation)}`);
       
       if (!res.ok) throw new Error('Failed to fetch results');
       
@@ -66,7 +65,7 @@ export default function SearchOverlay() {
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search across translations..."
+                  placeholder={`Search in ${translation.toUpperCase()}...`}
                   className="flex-1 bg-zinc-950 text-zinc-200 px-4 py-2 rounded-lg border border-zinc-800 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
                 />
                 <button 

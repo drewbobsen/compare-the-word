@@ -231,7 +231,7 @@ export default async function ComparePage({
       />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
-        <SearchOverlay />
+        <SearchOverlay translation={currentT1} />
         <div className="max-w-6xl mx-auto overflow-x-auto pb-4">
           {verses.length === 0 ? (
             <div className="text-zinc-500 mt-8">No verses found.</div>

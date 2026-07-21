@@ -13,8 +13,6 @@ COPY . .
 # STAGE 2: The Builder
 # ==========================================
 FROM base AS builder
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # Compile the React code into static HTML/JS and generate the standalone server
 RUN npm run build
 
