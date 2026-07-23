@@ -18,6 +18,7 @@ export default function SearchOverlay({ translation, t2 }: { translation: string
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const goToResult = (result: SearchResult) => {
     const params = new URLSearchParams();
@@ -52,6 +53,7 @@ export default function SearchOverlay({ translation, t2 }: { translation: string
       setError('An error occurred while searching.');
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   };
 
@@ -80,7 +82,10 @@ export default function SearchOverlay({ translation, t2 }: { translation: string
                   type="text"
                   autoFocus
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setHasSearched(false);
+                  }}
                   placeholder={`Search in ${translation.toUpperCase()}...`}
                   className="flex-1 bg-zinc-950 text-zinc-200 px-4 py-2 rounded-lg border border-zinc-800 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
                 />
@@ -104,7 +109,7 @@ export default function SearchOverlay({ translation, t2 }: { translation: string
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
               {error && <p className="text-red-400 text-sm">{error}</p>}
               
-              {!loading && results.length === 0 && query && !error && (
+              {!loading && hasSearched && results.length === 0 && query && !error && (
                 <p className="text-zinc-500 text-center py-8">No results found for "{query}".</p>
               )}
 
