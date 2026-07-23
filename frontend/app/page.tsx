@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import ControlBar from './ControlBar';
 import { Metadata } from 'next';
 import SearchOverlay from './SearchOverlay';
+import VerseAnchor from './VerseAnchor';
 // 1. UPDATED Interfaces for the Diff Engine
 export interface DiffToken {
   text: string;
@@ -231,7 +233,10 @@ export default async function ComparePage({
       />
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
-        <SearchOverlay translation={currentT1} />
+        <SearchOverlay translation={currentT1} t2={currentT2} />
+        <Suspense fallback={null}>
+          <VerseAnchor />
+        </Suspense>
         <div className="max-w-6xl mx-auto overflow-x-auto pb-4">
           {verses.length === 0 ? (
             <div className="text-zinc-500 mt-8">No verses found.</div>
@@ -241,7 +246,10 @@ export default async function ComparePage({
                 <div key={verseData.verse} className="contents group">
                   
                   {/* Left Column - Updated to use renderTokens */}
-                  <div className="flex gap-4 p-3 rounded-lg transition-colors group-hover:bg-zinc-900/80">
+                  <div
+                    id={`verse-${verseData.verse}`}
+                    className="flex gap-4 p-3 rounded-lg transition-colors group-hover:bg-zinc-900/80"
+                  >
                     <span className="text-xs font-mono text-zinc-600 mt-1.5 shrink-0 select-none group-hover:text-zinc-400">
                       {verseData.verse}
                     </span>

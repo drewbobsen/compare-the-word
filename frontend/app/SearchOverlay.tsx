@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export interface SearchResult {
   book: string;
@@ -10,12 +11,27 @@ export interface SearchResult {
   highlight: string | null;
 }
 
-export default function SearchOverlay({ translation }: { translation: string }) {
+export default function SearchOverlay({ translation, t2 }: { translation: string; t2: string }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const goToResult = (result: SearchResult) => {
+    const params = new URLSearchParams();
+    params.set('book', result.book);
+    params.set('chapter', result.chapter.toString());
+    params.set('t1', translation);
+    params.set('t2', t2);
+    params.set('verse', result.verse.toString());
+
+    setIsOpen(false);
+    setQuery('');
+    setResults([]);
+    router.push(`/?${params.toString()}`);
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,17 +109,22 @@ export default function SearchOverlay({ translation }: { translation: string }) 
               )}
 
               {results.map((result, index) => (
-                <div key={index} className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => goToResult(result)}
+                  className="w-full text-left p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50 cursor-pointer hover:bg-zinc-900 hover:border-zinc-700 transition-colors"
+                >
                   <h3 className="text-sm font-mono text-zinc-500 mb-1">
                     {result.book} {result.chapter}:{result.verse}
                   </h3>
-                  <p 
+                  <p
                     className="text-zinc-300 leading-relaxed search-highlight"
-                    dangerouslySetInnerHTML={{ 
-                      __html: result.highlight || result.text 
-                    }} 
+                    dangerouslySetInnerHTML={{
+                      __html: result.highlight || result.text
+                    }}
                   />
-                </div>
+                </button>
               ))}
             </div>
           </div>
