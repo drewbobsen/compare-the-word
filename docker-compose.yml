@@ -36,6 +36,8 @@ services:
     depends_on:
       api:
         condition: service_started
+    ports:
+      - 3000:3000
 
 volumes:
   pgdata:
