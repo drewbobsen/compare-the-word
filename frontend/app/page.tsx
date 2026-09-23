@@ -276,7 +276,7 @@ export default async function ComparePage({
         {/* NON-OBSTRUCTIVE FOOTER */}
         <footer className="mt-16 mb-4 text-center">
           <p className="text-sm text-zinc-600">
-            CompareTheWord is ad-free and open-source.
+            CompareTheWord is open-source.
           </p>
           <div className="mt-2 flex items-center justify-center space-x-3 text-sm text-zinc-500">
             <a 
@@ -286,6 +286,14 @@ export default async function ComparePage({
               className="hover:text-zinc-300 decoration-zinc-700 underline underline-offset-4 transition-colors duration-200"
             >
               Contribute on GitHub
+            </a>
+            <a
+              href="https://drewbobsen.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 decoration-zinc-700 underline underline-offset-4 transition-colors duraiton-200"
+            >
+              Maintained by DrewBobsen
             </a>
           </div>
         </footer>
