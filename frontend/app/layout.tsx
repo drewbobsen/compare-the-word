@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Compare the different versions of the Bible.",
 };
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6896090977772601"
-     crossorigin="anonymous"></script>
+     crossOrigin="anonymous"></script>
 export default function RootLayout({
   children,
 }: Readonly<{
